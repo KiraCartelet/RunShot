@@ -1,0 +1,22 @@
+# CMake build directories
+/build/
+/cmake-build-*/
+
+# Local IDE and OS metadata
+/.idea/
+.DS_Store
+._*
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated runtime output
+/GUI/assembly.data
+/GUI/snapshot.img
+/GUI/entry.S
+/GUI/entry.riscv
+/GUI/wave.fst
+/GUI/wave.vcd
+
+# Keep GUI/*.sh.bak: these are required script templates.

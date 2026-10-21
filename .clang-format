@@ -1,0 +1,55 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Indentation and tab
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 79
+
+# Pointer
+PointerAlignment: Right
+
+# Brace style
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterClass: true
+    AfterStruct: true
+    AfterEnum: true
+    AfterUnion: true
+    AfterNamespace: true
+    AfterFunction: true
+    BeforeLambdaBody: false
+    SplitEmptyFunction: false
+
+# Binary operators
+BreakBeforeBinaryOperators: NonAssignment
+PenaltyBreakAssignment: 2000
+
+# Function calls
+AllowAllArgumentsOnNextLine: true
+BinPackArguments: true
+
+# Return type
+BreakAfterReturnType: TopLevelDefinitions
+
+# Template declarations
+BreakTemplateDeclarations: Yes
+
+# Constructor initializers
+PackConstructorInitializers: Never
+BreakConstructorInitializers: BeforeColon
+
+# Macro alignment
+AlignConsecutiveMacros: true
+
+# Comment alignment
+AlignTrailingComments: true
+
+# Other settings
+AccessModifierOffset: -2
+IndentCaseLabels: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
