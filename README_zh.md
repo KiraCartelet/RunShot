@@ -9,7 +9,7 @@ RunShot 是一个基于 QEMU 插件的进程快照工具集，包括快照保存
 
 `main` 提供命令行工具，不包含 GTK 图形界面。图形界面版本请切换到 `runshot-gui`。
 
-原 `GUI/` 中的辅助文件保留在 `scripts/`，包括 `wrap_stack.c`、编译脚本和恢复脚本。使用下方示例前，请将需要的辅助文件复制到程序工作目录，或从 `scripts/` 目录执行并调整目标程序路径。运行脚本中的 QEMU/Chipyard 路径需要按本机环境修改。
+原 `GUI/` 中的辅助文件保留在 `scripts/`，包括 `wrap_stack.c`、`build.sh`、`make_entry.sh` 和 `entry.ld`。使用下方示例前，请将需要的辅助文件复制到程序工作目录，或从 `scripts/` 目录执行并调整目标程序路径。QEMU/Chipyard 命令中的路径需要按本机环境修改。
 
 ## 功能特性
 

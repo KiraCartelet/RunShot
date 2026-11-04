@@ -13,7 +13,7 @@ with the recovery tool.
 
 `main` contains command-line tools without the GTK interface. Switch to `runshot-gui` for the graphical interface.
 
-Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, build scripts, and recovery scripts. Before using the examples below, copy the required helpers to your program working directory, or run from `scripts/` and adjust target paths. Configure the QEMU/Chipyard paths in the launch scripts for your machine.
+Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, `build.sh`, `make_entry.sh`, and `entry.ld`. Before using the examples below, copy the required helpers to your program working directory, or run from `scripts/` and adjust target paths. Adjust the QEMU/Chipyard command paths for your machine.
 
 ## Features
 
