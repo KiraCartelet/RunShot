@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+source ~/.bashrc
+
+./make_entry.sh snapshot.img
+~/riscv-work/chipyard-boom/chipyard-boom-master/chipyard-1.13.0/sims/verilator/simulator-chipyard.harness-RocketConfig-debug +permissive +loadsnap=snapshot.img +permissive-off entry.riscv

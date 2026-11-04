@@ -11,6 +11,8 @@ with the recovery tool.
 
 ## Branches and helper scripts
 
+This branch includes the GTK 3 interface: run `python3 GUI/app.py`. Build the core tools and configure QEMU/Chipyard paths in `GUI/` first. PyGObject and GTK 3 are required. Keep `GUI/*.bak`: they are templates used by the interface.
+
 `main` contains command-line tools without the GTK interface. Switch to `runshot-gui` for the graphical interface.
 
 Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, build scripts, and recovery scripts. Before using the examples below, copy the required helpers to your program working directory, or run from `scripts/` and adjust target paths. Configure the QEMU/Chipyard paths in the launch scripts for your machine.

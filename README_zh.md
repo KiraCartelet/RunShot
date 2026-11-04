@@ -7,6 +7,8 @@ RunShot 是一个基于 QEMU 插件的进程快照工具集，包括快照保存
 
 ## 分支与脚本
 
+本分支包含 GTK 3 图形界面，入口为 `python3 GUI/app.py`。请先编译核心工具并配置 `GUI/` 中脚本的 QEMU/Chipyard 路径；Python 环境需有 PyGObject 和 GTK 3。`GUI/*.bak` 是界面使用的模板，请保留。
+
 `main` 提供命令行工具，不包含 GTK 图形界面。图形界面版本请切换到 `runshot-gui`。
 
 原 `GUI/` 中的辅助文件保留在 `scripts/`，包括 `wrap_stack.c`、编译脚本和恢复脚本。使用下方示例前，请将需要的辅助文件复制到程序工作目录，或从 `scripts/` 目录执行并调整目标程序路径。运行脚本中的 QEMU/Chipyard 路径需要按本机环境修改。
