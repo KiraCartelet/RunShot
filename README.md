@@ -15,11 +15,10 @@ with the recovery tool.
 
 Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, `build.sh`, `make_entry.sh`, and `entry.ld`. These helpers target Linux (Bash 4+, Python 3 and the RISC-V toolchains). You can invoke `build.sh` and `make_entry.sh` by absolute path from your program working directory; they locate their helper sources relative to the script and write outputs in the current directory. If copying the helpers, copy the entire `scripts/` directory, including `entry/` and `snapshot_regs.py`. An existing `entry.ld` in the working directory is preserved; otherwise the bundled template is copied there. Adjust the QEMU/Chipyard command paths for your machine.
 
-The entry generator is split into `make_entry.sh` (orchestration),
-`snapshot_regs.py` (REGS parsing), and `entry/*.S` (boot, register restore and
-trap handling). Register restore retains the existing jump to saved `ra`.
-`CC`/`WRAP_SRC`, `GCC`/`READELF` and `TOHOST_ADDR`/`FROMHOST_ADDR` overrides
-remain available.
+Environment overrides: `CC`/`WRAP_SRC`, `GCC`/`READELF`, and
+`TOHOST_ADDR`/`FROMHOST_ADDR`.
+
+See [CHANGELOG.md](CHANGELOG.md) for change history.
 
 ### Formatting and helper checks
 
