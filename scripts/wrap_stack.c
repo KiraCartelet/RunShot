@@ -1,4 +1,10 @@
-// wrap_stack.c
+/*
+ * RunShot: Live program state capture and playback tool
+ *
+ * Relocate the Linux startup stack and arguments into the replay address
+ * range. This file is linked into the captured program, before libc
+ * initialization.
+ */
 #include <stddef.h>
 #include <stdint.h>
 
@@ -18,11 +24,11 @@
 #define AT_SYSINFO_EHDR 33
 #endif
 
-// Linux riscv64 syscalls
+/* Linux RISC-V syscall numbers. */
 #define __NR_mmap 222
 #define __NR_exit 93
 
-// mmap prot/flags
+/* mmap protection and mapping flags. */
 #define PROT_READ           1
 #define PROT_WRITE          2
 #define MAP_PRIVATE         0x02
@@ -31,11 +37,18 @@
 #define MAP_FIXED           0x10
 #define MAP_FIXED_NOREPLACE 0x100000
 
+/* Keep startup data separate from the downward-growing stack. */
+#define STACK_BASE 0x8F000000u
+#define STACK_SIZE 0x01000000u /* 16 MiB */
+#define STACK_SP   0x8FFFFFF0u
+#define ARGS_BASE  0x8E000000u
+#define ARGS_SIZE  0x00400000u /* 4 MiB */
+
 typedef struct
 {
-    uintptr_t a_type;
-    uintptr_t a_val;
-} auxv_t;
+    uintptr_t type;
+    uintptr_t value;
+} AuxEntry;
 
 static inline long
 sys_mmap(void *addr, size_t len, int prot, int flags, int fd, size_t off)
@@ -63,14 +76,29 @@ sys_exit(int code)
     __builtin_unreachable();
 }
 
+/* Preserve the fixed-address fallback used by the capture environment. */
+static void
+map_region(uintptr_t address, size_t size, int flags)
+{
+    int base_flags = MAP_PRIVATE | MAP_ANON | flags;
+    long result = sys_mmap((void *)address, size, PROT_READ | PROT_WRITE,
+                           base_flags | MAP_FIXED_NOREPLACE, -1, 0);
+    if (result < 0) {
+        result = sys_mmap((void *)address, size, PROT_READ | PROT_WRITE,
+                          base_flags | MAP_FIXED, -1, 0);
+        if (result < 0)
+            sys_exit(127);
+    }
+}
+
 static inline uintptr_t
-align16(uintptr_t x)
+align_up_16(uintptr_t x)
 {
     return (x + 15u) & ~((uintptr_t)15u);
 }
 
 static inline size_t
-cstrlen(const char *s)
+string_length(const char *s)
 {
     size_t n = 0;
     while (s && s[n])
@@ -79,7 +107,7 @@ cstrlen(const char *s)
 }
 
 static inline void
-cpy_bytes(void *dst, const void *src, size_t n)
+copy_bytes(void *dst, const void *src, size_t n)
 {
     volatile unsigned char *d = (volatile unsigned char *)dst;
     const volatile unsigned char *p = (const volatile unsigned char *)src;
@@ -88,14 +116,26 @@ cpy_bytes(void *dst, const void *src, size_t n)
 }
 
 static inline char *
-cpy_cstr(char *out, const char *in)
+copy_string(char *out, const char *in)
 {
-    size_t n = cstrlen(in);
-    cpy_bytes(out, in, n + 1);
+    size_t n = string_length(in);
+    copy_bytes(out, in, n + 1);
     return out + (n + 1);
 }
 
-/* linker provides this when using --wrap */
+/* Use local byte copies: libc has not been initialized yet. */
+static char *
+copy_strings(char **destination, char **source, int count, char *cursor)
+{
+    for (int i = 0; i < count; i++) {
+        destination[i] = cursor;
+        cursor = copy_string(cursor, source[i]);
+    }
+    destination[count] = NULL;
+    return cursor;
+}
+
+/* The linker resolves this symbol when --wrap=__libc_start_main is used. */
 extern int __real___libc_start_main(int (*main)(int, char **, char **), int,
                                     char **, void (*init)(void),
                                     void (*fini)(void),
@@ -106,53 +146,25 @@ __wrap___libc_start_main(int (*mainfn)(int, char **, char **), int argc,
                          char **argv, void (*init)(void), void (*fini)(void),
                          void (*rtld_fini)(void), void *stack_end)
 {
-    (void)stack_end; // 我们会传新的 stack_end
+    (void)stack_end;
 
-    // 你要求的范围
-    const uintptr_t STACK_BASE = 0x8F000000u;
-    const size_t STACK_SIZE = 0x01000000u; // 16MB
-    const uintptr_t STACK_SP = 0x8FFFFFF0u;
+    map_region(STACK_BASE, STACK_SIZE, MAP_STACK);
+    map_region(ARGS_BASE, ARGS_SIZE, 0);
 
-    // 给“argv/envp/auxv+字符串+AT_RANDOM”等单独开一块 args
-    // 区，避免被栈增长覆盖
-    const uintptr_t ARGS_BASE = 0x8E000000u;
-    const size_t ARGS_SIZE = 0x00400000u; // 4MB（够用可再调大）
-
-    // 1) mmap 固定栈区
-    long r = sys_mmap((void *)STACK_BASE, STACK_SIZE, PROT_READ | PROT_WRITE,
-                      MAP_PRIVATE | MAP_ANON | MAP_STACK | MAP_FIXED_NOREPLACE,
-                      -1, 0);
-    if (r < 0) {
-        r = sys_mmap((void *)STACK_BASE, STACK_SIZE, PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANON | MAP_STACK | MAP_FIXED, -1, 0);
-        if (r < 0)
-            sys_exit(127);
-    }
-
-    // 2) mmap 固定 args 区
-    r = sys_mmap((void *)ARGS_BASE, ARGS_SIZE, PROT_READ | PROT_WRITE,
-                 MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0);
-    if (r < 0) {
-        r = sys_mmap((void *)ARGS_BASE, ARGS_SIZE, PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-        if (r < 0)
-            sys_exit(127);
-    }
-
-    // 3) 从 argv 推出 envp/auxv（这比读 sp 更稳）
+    /* argv, envp and auxv are contiguous in the Linux startup layout. */
     char **envp = argv + argc + 1;
     int envc = 0;
     while (envp[envc])
         envc++;
 
-    auxv_t *auxv = (auxv_t *)(envp + envc + 1);
+    AuxEntry *auxv = (AuxEntry *)(envp + envc + 1);
     int auxc = 0;
-    while (auxv[auxc].a_type != AT_NULL)
+    while (auxv[auxc].type != AT_NULL)
         auxc++;
-    auxc++; // include AT_NULL
+    auxc++; /* Include the AT_NULL terminator. */
 
-    // 4) 在 ARGS 区构造“新初始栈布局”：argc/argv/envp/auxv（全在 0x8E....）
-    uintptr_t p = align16(ARGS_BASE);
+    /* Reserve argc, pointer arrays and auxv before copying their payloads. */
+    uintptr_t p = align_up_16(ARGS_BASE);
 
     uintptr_t *argc_ptr = (uintptr_t *)p;
     *argc_ptr = (uintptr_t)argc;
@@ -162,51 +174,40 @@ __wrap___libc_start_main(int (*mainfn)(int, char **, char **), int argc,
     p += (size_t)(argc + 1) * sizeof(char *);
     char **new_envp = (char **)p;
     p += (size_t)(envc + 1) * sizeof(char *);
-    auxv_t *new_auxv = (auxv_t *)p;
-    p += (size_t)auxc * sizeof(auxv_t);
+    AuxEntry *new_auxv = (AuxEntry *)p;
+    p += (size_t)auxc * sizeof(AuxEntry);
 
-    uintptr_t strp = align16(p);
-    char *strcur = (char *)strp;
+    char *strcur = (char *)align_up_16(p);
 
-    // copy argv strings
-    for (int i = 0; i < argc; i++) {
-        new_argv[i] = strcur;
-        strcur = cpy_cstr(strcur, argv[i]);
-    }
-    new_argv[argc] = NULL;
+    strcur = copy_strings(new_argv, argv, argc, strcur);
+    strcur = copy_strings(new_envp, envp, envc, strcur);
 
-    // copy envp strings
-    for (int i = 0; i < envc; i++) {
-        new_envp[i] = strcur;
-        strcur = cpy_cstr(strcur, envp[i]);
-    }
-    new_envp[envc] = NULL;
-
-    // copy auxv, but rewrite stack-pointing entries + disable vdso
+    /* Relocate stack-backed auxv payloads and disable the high-address vDSO.
+     */
     for (int i = 0; i < auxc; i++) {
-        uintptr_t t = auxv[i].a_type;
-        uintptr_t v = auxv[i].a_val;
+        uintptr_t t = auxv[i].type;
+        uintptr_t v = auxv[i].value;
 
         if (t == AT_SYSINFO_EHDR) {
-            v = 0; // 禁用 vDSO，避免高地址访问
+            v = 0;
         } else if (t == AT_RANDOM) {
-            // AT_RANDOM 指向 16 bytes（原本在初始高地址栈上）
-            char *rnd = (char *)align16((uintptr_t)strcur);
-            cpy_bytes(rnd, (const void *)v, 16);
+            /* AT_RANDOM points to 16 random bytes on the original stack. */
+            char *rnd = (char *)align_up_16((uintptr_t)strcur);
+            copy_bytes(rnd, (const void *)v, 16);
             v = (uintptr_t)rnd;
             strcur = rnd + 16;
         } else if (t == AT_PLATFORM || t == AT_EXECFN) {
-            // 这些字符串通常也在初始高地址栈上
+            /* These strings may also point into the original stack. */
             char *s = strcur;
-            strcur = cpy_cstr(strcur, (const char *)v);
+            strcur = copy_string(strcur, (const char *)v);
             v = (uintptr_t)s;
         }
 
-        new_auxv[i].a_type = t;
-        new_auxv[i].a_val = v;
+        new_auxv[i].type = t;
+        new_auxv[i].value = v;
     }
 
-    // 5) 切 sp 到 0x8FFFFFF0，然后进入真正的 glibc 启动
+    /* Switch to the replay stack before entering the real libc startup. */
     asm volatile("mv sp, %0" : : "r"(STACK_SP) : "memory");
 
     __real___libc_start_main(mainfn, argc, new_argv, init, fini, rtld_fini,

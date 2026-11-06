@@ -9,7 +9,24 @@ RunShot 是一个基于 QEMU 插件的进程快照工具集，包括快照保存
 
 `main` 提供命令行工具，不包含 GTK 图形界面。图形界面版本请切换到 `runshot-gui`。
 
-原 `GUI/` 中的辅助文件保留在 `scripts/`，包括 `wrap_stack.c`、`build.sh`、`make_entry.sh` 和 `entry.ld`。使用下方示例前，请将需要的辅助文件复制到程序工作目录，或从 `scripts/` 目录执行并调整目标程序路径。QEMU/Chipyard 命令中的路径需要按本机环境修改。
+原 `GUI/` 中的辅助文件保留在 `scripts/`，包括 `wrap_stack.c`、`build.sh`、`make_entry.sh` 和 `entry.ld`。这些辅助脚本面向 Linux（Bash 4+、Python 3 和 RISC-V 工具链）。可在程序工作目录中通过绝对路径调用 `build.sh` 和 `make_entry.sh`：辅助源码相对于脚本定位，输出仍写入当前目录。若复制脚本，请复制整个 `scripts/` 目录，包括 `entry/` 和 `snapshot_regs.py`。工作目录中已有的 `entry.ld` 会保留，否则从附带模板复制。QEMU/Chipyard 命令中的路径需要按本机环境修改。
+
+入口生成器分为 `make_entry.sh`（调用流程）、`snapshot_regs.py`（REGS 解析）和
+`entry/*.S`（启动、寄存器恢复、异常处理）。恢复时仍按原逻辑跳转到保存的 `ra`。
+原有的 `CC`/`WRAP_SRC`、`GCC`/`READELF`、`TOHOST_ADDR`/`FROMHOST_ADDR` 环境变量仍可使用。
+
+### 格式与辅助脚本检查
+
+```bash
+pre-commit install
+pre-commit run --all-files
+bash -n scripts/build.sh scripts/make_entry.sh
+python3 -m unittest discover -s tests -p '*_test.py' -v
+```
+
+现有 pre-commit 使用 clang-format 20.1.8 和 `.clang-format` 格式化 C/头文件，
+不会自动格式化 Shell、Python 或汇编。辅助脚本测试使用模拟编译器，不能替代
+Linux/RISC-V 环境下的快照保存与恢复验证。
 
 ## 功能特性
 

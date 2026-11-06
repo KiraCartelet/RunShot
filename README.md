@@ -13,7 +13,27 @@ with the recovery tool.
 
 `main` contains command-line tools without the GTK interface. Switch to `runshot-gui` for the graphical interface.
 
-Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, `build.sh`, `make_entry.sh`, and `entry.ld`. Before using the examples below, copy the required helpers to your program working directory, or run from `scripts/` and adjust target paths. Adjust the QEMU/Chipyard command paths for your machine.
+Helper files formerly under `GUI/` are preserved in `scripts/`, including `wrap_stack.c`, `build.sh`, `make_entry.sh`, and `entry.ld`. These helpers target Linux (Bash 4+, Python 3 and the RISC-V toolchains). You can invoke `build.sh` and `make_entry.sh` by absolute path from your program working directory; they locate their helper sources relative to the script and write outputs in the current directory. If copying the helpers, copy the entire `scripts/` directory, including `entry/` and `snapshot_regs.py`. An existing `entry.ld` in the working directory is preserved; otherwise the bundled template is copied there. Adjust the QEMU/Chipyard command paths for your machine.
+
+The entry generator is split into `make_entry.sh` (orchestration),
+`snapshot_regs.py` (REGS parsing), and `entry/*.S` (boot, register restore and
+trap handling). Register restore retains the existing jump to saved `ra`.
+`CC`/`WRAP_SRC`, `GCC`/`READELF` and `TOHOST_ADDR`/`FROMHOST_ADDR` overrides
+remain available.
+
+### Formatting and helper checks
+
+```bash
+pre-commit install
+pre-commit run --all-files
+bash -n scripts/build.sh scripts/make_entry.sh
+python3 -m unittest discover -s tests -p '*_test.py' -v
+```
+
+The existing pre-commit configuration uses clang-format 20.1.8 and
+`.clang-format` for C/header files; it does not automatically format Shell,
+Python or assembly. The helper tests use a mock compiler and do not replace
+Linux/RISC-V capture and replay validation.
 
 ## Features
 
