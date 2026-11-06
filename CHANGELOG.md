@@ -2,6 +2,11 @@
 
 ## 2026-11-06
 
+### 后续计划文档
+
+- 新增 `TODO.md`，记录快照模式下由 `entry.riscv` 分配 `tohost/fromhost` 的方案，无需原程序 ELF；包含布局冲突检查、Chipyard/FESVR 验证、兼容性及验收条件。
+- 本次仅记录待办，未修改通信地址或快照恢复实现。
+
 ### scripts 重构
 
 对应提交：[`8db105f`](https://github.com/KiraCartelet/RunShot/commit/8db105f)。
